@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conciliador NF-e | Bling ➔ Shopee (Upload em Massa)</title>
+  <meta name="description" content="Sistema seguro e 100% client-side para conciliação em massa de chaves fiscais de NF-e do Bling para a planilha modelo da Shopee." />
+  
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!-- Bibliotecas Locais com Fallback automático para CDN -->
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script>
+    if (typeof XLSX === "undefined") {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+    }
+  </script>
+  <script src="vendor/jszip.min.js"></script>
+  <script>
+    if (typeof JSZip === "undefined") {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\/script>');
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Cabeçalho Principal -->
+  <header>
+    <div class="container header-content">
+      <div class="brand">
+        <div class="brand-icon">📦</div>
+        <div class="brand-title">
+          <h1>Conciliador de NF-e Bling ➔ Shopee</h1>
+          <p>Extração automática de chaves fiscais em XML e cruzamento para Upload em Massa</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge-tag privacy" title="Seus dados fiscais nunca saem do seu computador">
+          🔒 100% Client-Side (Zero Servidor)
+        </span>
+        <span class="badge-tag">
+          🛡️ Anti-Notação Científica
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Seção de Ações Rápidas -->
+    <div class="actions-banner">
+      <div class="actions-banner-left">
+        <span>💡 Quer experimentar antes de enviar arquivos reais?</span>
+        <button id="btnDemoData" class="btn-secondary" type="button">
+          ⚡ Carregar Amostra de Teste
+        </button>
+      </div>
+      <div>
+        <button id="btnResetState" class="btn-secondary" type="button" title="Limpar estado e iniciar novo lote">
+          🔄 Novo Lote / Limpar
+        </button>
+      </div>
+    </div>
+
+    <!-- Área de Upload (Passo 1 e Passo 2) -->
+    <div class="upload-grid">
+      
+      <!-- Passo 1: Planilha Shopee -->
+      <section class="upload-card">
+        <div class="card-header">
+          <span class="step-num">1</span>
+          <h2>Planilha da Shopee (.xlsx)</h2>
+        </div>
+        <div id="dropzoneShopee" class="dropzone" tabindex="0" role="button" aria-label="Carregar planilha modelo da Shopee">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+          <p>Arraste a planilha da Shopee aqui</p>
+          <span>ou clique para selecionar o arquivo (.xlsx)</span>
+          <input type="file" id="inputShopee" accept=".xlsx, .xls, .csv" style="display: none;" />
+        </div>
+        <div id="statusShopee" class="upload-status">
+          <span class="status-dot"></span> Aguardando arquivo da Shopee (.xlsx)
+        </div>
+      </section>
+
+      <!-- Passo 2: XMLs ou ZIP do Bling -->
+      <section class="upload-card">
+        <div class="card-header">
+          <span class="step-num step-2">2</span>
+          <h2>Notas Fiscais do Bling (.xml / .zip)</h2>
+        </div>
+        <div id="dropzoneXml" class="dropzone step-2-drop" tabindex="0" role="button" aria-label="Carregar XMLs ou arquivo compactado ZIP do Bling">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 16 12 12 8 16"></polyline>
+            <line x1="12" y1="12" x2="12" y2="21"></line>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+            <polyline points="16 16 12 12 8 16"></polyline>
+          </svg>
+          <p>Arraste o arquivo .ZIP ou XMLs aqui</p>
+          <span>selecione arquivos individuais ou <button id="btnFolderTrigger" type="button" class="btn-secondary" style="padding:2px 8px;font-size:11px;margin-left:4px;">Selecionar Pasta Inteira</button></span>
+          <input type="file" id="inputXml" accept=".xml, .zip" multiple style="display: none;" />
+          <input type="file" id="inputXmlFolder" webkitdirectory directory multiple style="display: none;" />
+        </div>
+        <div id="statusXml" class="upload-status">
+          <span class="status-dot"></span> Aguardando pacote ZIP ou arquivos XML
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Cards de Métricas e Estatísticas -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-title">Pedidos na Shopee</div>
+        <div id="statTotalShopee" class="metric-value">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">XMLs Processados</div>
+        <div id="statTotalXml" class="metric-value">0</div>
+      </div>
+      <div class="metric-card success">
+        <div class="metric-title">Conciliados com Sucesso</div>
+        <div id="statConciliados" class="metric-value">0</div>
+      </div>
+      <div class="metric-card warning">
+        <div class="metric-title">Pendentes / Sem XML</div>
+        <div id="statPendentes" class="metric-value">0</div>
+      </div>
+      <div class="metric-card primary">
+        <div class="metric-title">Taxa de Conciliação</div>
+        <div id="statTaxa" class="metric-value">0%</div>
+      </div>
+    </div>
+
+    <!-- Seção de Resultados e Auditoria -->
+    <section class="results-card">
+      <div class="results-header">
+        <div class="filters-bar">
+          <button id="filterAll" class="filter-btn active" type="button">Todos</button>
+          <button id="filterReconciled" class="filter-btn" type="button">Conciliados</button>
+          <button id="filterPending" class="filter-btn" type="button">Pendentes</button>
+          <input type="text" id="inputSearch" class="search-input" placeholder="🔍 Buscar por Pedido, NF ou Cliente..." />
+        </div>
+
+        <div class="export-actions">
+          <button id="btnExportSelected" class="btn-primary" type="button" disabled>
+            ⬇️ Baixar Planilha Shopee (0 Selecionados)
+          </button>
+          <button id="btnExportAll" class="btn-secondary" type="button" disabled title="Exporta todas as linhas da planilha Shopee com as chaves encontradas">
+            Planilha Completa
+          </button>
+          <button id="btnExportReport" class="btn-secondary" type="button" disabled title="Exporta relatório com Nº NF, Destinatário e Valores para auditoria fiscal">
+            📊 Relatório Fiscal (.xlsx)
+          </button>
+        </div>
+      </div>
+
+      <!-- Estado Inicial Vazio -->
+      <div id="emptyState" class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 17v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6"></path>
+          <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+        </svg>
+        <h3>Nenhum arquivo carregado ainda</h3>
+        <p>Siga os passos 1 e 2 acima para carregar a planilha da Shopee e os XMLs do Bling, ou clique em <strong>"Carregar Amostra de Teste"</strong>.</p>
+      </div>
+
+      <!-- Tabela de Conferência -->
+      <div id="tableContainer" class="table-responsive" style="display: none;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 40px;">
+                <input type="checkbox" id="checkAll" checked title="Selecionar / Desmarcar todos visíveis" />
+              </th>
+              <th>Status</th>
+              <th>ID Pedido Shopee</th>
+              <th>Chave de Acesso NF-e (44 dígitos)</th>
+              <th>NF-e / Série</th>
+              <th>Destinatário</th>
+              <th>Valor (R$)</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Linhas geradas via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Container de Toasts -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Scripts da Aplicação -->
+  <script src="js/xml-parser.js"></script>
+  <script src="js/excel-handler.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
